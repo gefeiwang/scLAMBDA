@@ -149,3 +149,29 @@ def compute_umap(adata, rep=None, compute_s_umap=False):
         embedding_s = reducer.fit_transform(adata.uns['emb_s'].values)
         adata.uns['s_umap'] = embedding_s
 
+
+def gene2loc(genes, gene_name_vec, n_tgs):
+    tg_loc_i = []
+    if len(genes) > 1:
+        for gene in genes:
+            if gene in gene_name_vec:
+                tg_loc_i.append(np.where(gene == gene_name_vec)[0][0])
+            else:
+                tg_loc_i.append(-1)
+    elif genes[0] == 'ctrl':
+        tg_loc_i = [-1] * n_tgs
+    else:
+        if genes[0] in gene_name_vec:
+            tg_loc_i.append(np.where(genes[0] == gene_name_vec)[0][0])
+        else:
+            tg_loc_i.append(-1)
+    return tg_loc_i
+
+
+def adjust_tg(x_hat, x_hat_tg_ls, tg_loc, ctrl_mean_tensor):
+    # adjust the predicted target gene values
+    for j in range(tg_loc.shape[1]):
+        x_hat_tg = x_hat_tg_ls[j]
+        mask = tg_loc[:, j]>=0
+        x_hat[torch.arange(x_hat.shape[0]).to(mask.device)[mask], tg_loc[:, j][mask]] = x_hat_tg[mask].reshape(-1) - ctrl_mean_tensor[tg_loc[:, j]][mask]
+    return x_hat
