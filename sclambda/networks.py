@@ -77,6 +77,7 @@ class Decoder_tgid(nn.Module):
         self.FC_hidden2 = nn.Linear(hidden_dim, hidden_dim)
         self.FC_output = nn.Linear(hidden_dim, output_dim)
         self.FC_hidden_tg = nn.Linear(latent_dim*2, hidden_dim)
+        self.FC_hidden_tg2 = nn.Linear(hidden_dim, hidden_dim)
         self.FC_output_tg = nn.Linear(hidden_dim, 1)
         self.LeakyReLU = nn.LeakyReLU(0.2)
 
