@@ -271,11 +271,11 @@ class Model(object):
                                 p_tg_ls = [self.gene_emb[i]]
                         val_p = torch.from_numpy(np.tile(pert_emb_p, 
                                                          (self.ctrl_x.shape[0], 1))).float().to(self.device)
-                        genes = i.split('+')
-                        tg_loc_i = gene2loc(genes, self.adata.var.gene_name.values, self.n_tgs)
-                        tg_loc = torch.from_numpy(np.tile(np.array(tg_loc_i), 
-                                                         (self.ctrl_x.shape[0], 1))).long().to(self.device)
                         if self.use_tg_coord:
+                            genes = i.split('+')
+                            tg_loc_i = gene2loc(genes, self.adata.var.gene_name.values, self.n_tgs)
+                            tg_loc = torch.from_numpy(np.tile(np.array(tg_loc_i), 
+                                                             (self.ctrl_x.shape[0], 1))).long().to(self.device)
                             p_tg = [torch.from_numpy(np.tile(p_tg_i, 
                                                          (self.ctrl_x.shape[0], 1))).float().to(self.device) for p_tg_i in p_tg_ls]
                             x_hat, x_hat_tg_ls, p_hat, mean_z, log_var_z, s = self.Net(self.ctrl_x, val_p, tg_loc.long(), p_tg)
