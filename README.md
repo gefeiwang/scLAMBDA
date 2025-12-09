@@ -46,15 +46,19 @@ model.train()
 ```
 Note that for single-gene perturbations, `multi_gene = False` should be included in the `sclambda.model.Model()` parameters.
 ### Prediction
-Once trained, scLAMBDA can be used for *in silico* predictions. With a list of test perturbations `pert_test`, you can perform *in silico* perturbation on control cells using:
+Once trained, scLAMBDA can be used for *in silico* predictions. With a list of test perturbations `pert_test`, you can perform *in silico* perturbation using:
 ```python
 res = model.predict(pert_test, return_type = 'cells')
 ```
-Alternatively, you can generate new perturbed cells using:
+which will return the prediction results on control cells used in training. With a NumPy array containing the gene expression matrix of control cells `ctrl_exp`, the *in silico* perturbation can be performed on the input control cells:
 ```python
-res = model.generate(pert_test, return_type = 'cells')
+res = model.predict(pert_test, ctrl_exp = ctrl_exp, return_type = 'cells')
 ```
-Setting `return_type='mean'` returns the prediction results as the mean gene expression.
+Alternatively, with basal states generated from a standard normal prior, you can generate new perturbed cells with a given sample size `n_cells` using:
+```python
+res = model.generate(pert_test, n_cells = 10000, return_type = 'cells')
+```
+Setting `return_type='mean'` in both modes returns the prediction results as the mean gene expression.
 ## Vignettes
 User can follow the [example](https://github.com/gefeiwang/scLAMBDA/blob/main/demos/Norman_tutorial.ipynb) for training and evaluating scLAMBDA on the Perturb-seq dataset from Norman et al. (https://www.science.org/doi/10.1126/science.aax4438).
 ## Citation
