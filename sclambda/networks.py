@@ -6,7 +6,12 @@ import numpy as np
 class Net(nn.Module):
     def __init__(self, x_dim, p_dim, latent_dim = 30, hidden_dim = 512, use_tg_coord = False):
         super(Net, self).__init__()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif torch.backends.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
         self.use_tg_coord = use_tg_coord
         self.Encoder_x = Encoder(input_dim=x_dim, hidden_dim=hidden_dim, latent_dim=latent_dim).to(self.device)
         self.Encoder_p = Encoder(input_dim=p_dim, hidden_dim=hidden_dim, latent_dim=latent_dim, VAE=False).to(self.device)

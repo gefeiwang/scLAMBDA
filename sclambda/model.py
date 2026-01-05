@@ -37,7 +37,12 @@ class Model(object):
                  ):
 
         # add device
-        self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        if torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif torch.backends.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
 
         # set random seed
         torch.manual_seed(seed)
@@ -438,7 +443,12 @@ class Model(object):
 
 class PertDataset(Dataset):
     def __init__(self, x, p, tg_loc=None, pert_emb_cells_tg=None):
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif torch.backends.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
         self.x = x
         self.p = p
         self.tg_loc = tg_loc
