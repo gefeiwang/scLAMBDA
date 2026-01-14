@@ -3,9 +3,44 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+class Net_context(nn.Module):
+    def __init__(self, x_dim, p_dim, ct_dim, latent_dim = 30, hidden_dim = 512):
+        super(Net_context, self).__init__()
+        # add device
+        if torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif torch.backends.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
+        self.Encoder_x = Encoder(input_dim=x_dim, hidden_dim=hidden_dim, latent_dim=latent_dim).to(self.device)
+        self.Encoder_p = Encoder(input_dim=p_dim, hidden_dim=hidden_dim, latent_dim=latent_dim, VAE=False).to(self.device)
+        self.Encoder_ct = Encoder(input_dim=ct_dim, hidden_dim=hidden_dim, latent_dim=latent_dim, VAE=False).to(self.device)
+        self.Decoder_x = Decoder(latent_dim=latent_dim, hidden_dim = hidden_dim, output_dim = x_dim).to(self.device)
+        self.Decoder_p = Decoder(latent_dim=latent_dim, hidden_dim = hidden_dim, output_dim = p_dim).to(self.device)
+        self.Decoder_ct = Decoder(latent_dim=latent_dim, hidden_dim = hidden_dim, output_dim = ct_dim).to(self.device)
+        self.MINE = MINE(latent_dim=latent_dim, hidden_dim=hidden_dim).to(self.device)
+
+    def reparameterization(self, mean, var):
+        epsilon = torch.randn_like(var).to(self.device)
+        z = mean + var * epsilon
+        return z
+
+    def forward(self, x, p, ct):
+        mean_z, log_var_z = self.Encoder_x(x)
+        z = self.reparameterization(mean_z, torch.exp(0.5 * log_var_z)) # takes exponential function (log var -> var)
+        s = self.Encoder_p(p)
+        c = self.Encoder_ct(ct)
+        x_hat = self.Decoder_x(z+s+c)
+        p_hat = self.Decoder_p(s)
+        ct_hat = self.Decoder_ct(c)
+        
+        return x_hat, p_hat, ct_hat, mean_z, log_var_z, s, c
+
 class Net(nn.Module):
     def __init__(self, x_dim, p_dim, latent_dim = 30, hidden_dim = 512, use_tg_coord = False):
         super(Net, self).__init__()
+        # add device
         if torch.cuda.is_available():
             self.device = torch.device("cuda")
         elif torch.backends.mps.is_available():
@@ -25,7 +60,7 @@ class Net(nn.Module):
 
     def reparameterization(self, mean, var):
         epsilon = torch.randn_like(var).to(self.device)
-        z = mean + var * epsilon # reparameterization trick
+        z = mean + var * epsilon
         return z
 
     def forward(self, x, p, 
