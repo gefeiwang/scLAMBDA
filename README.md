@@ -45,6 +45,22 @@ model = sclambda.model.Model(adata,
 model.train()
 ```
 Note that for single-gene perturbations, `multi_gene = False` should be included in the `sclambda.model.Model()` parameters.
+* (Optional) By setting `use_tg_coord = True`, the model leverages the indices of perturbation target genes to improve the target-gene effect prediction.
+
+For multi-cell line training, context embeddings encoding cell line or cell type information should be included using the following script:
+```python
+model = sclambda.model.Model_context(adata, 
+                                     gene_embeddings,
+                                     ct_embeddings,
+                                     model_path = 'path_to_save_dir/models')
+
+model.train()
+```
+For this utility, three columns should be included in `adata.obs`: the target genes specified in `adata.obs['condition']`, the cell types specified in `adata.obs['cell_type']`, and a combined column `adata.obs['cell_type+condition']`, which can be created as follows:
+```python
+adata.obs['cell_type+condition'] = [adata.obs['cell_type'].values[i] + '_---_' + adata.obs['condition'].values[i] for i in range(adata.shape[0])]
+```
+should be included.
 ### Prediction
 Once trained, scLAMBDA can be used for *in silico* predictions. With a list of test perturbations `pert_test`, you can perform *in silico* perturbation using:
 ```python
@@ -60,6 +76,6 @@ res = model.generate(pert_test, n_cells = 10000, return_type = 'cells')
 ```
 Setting `return_type='mean'` in both modes returns the prediction results as the mean gene expression.
 ## Vignettes
-User can follow the [example](https://github.com/gefeiwang/scLAMBDA/blob/main/demos/Norman_tutorial.ipynb) for training and evaluating scLAMBDA on the Perturb-seq dataset from Norman et al. (https://www.science.org/doi/10.1126/science.aax4438).
+User can follow the [example](https://github.com/gefeiwang/scLAMBDA/blob/main/demos/Norman_tutorial.ipynb) for training and evaluating scLAMBDA on the Perturb-seq dataset from Norman et al. (https://www.science.org/doi/10.1126/science.aax4438). The multi-cell line training code can be found in the [example](https://github.com/gefeiwang/scLAMBDA/blob/main/demos/multi_cell_line_for_jurkat_eval.ipynb), which uses essentail gene perturbations from four cell lines (https://www.sciencedirect.com/science/article/pii/S0092867422005979; https://www.nature.com/articles/s41588-025-02169-3).
 ## Citation
 Gefei Wang, Tianyu Liu, Jia Zhao, Youshu Cheng, Hongyu Zhao. Modeling and predicting single-cell multi-gene perturbation responses with scLAMBDA. bioRxiv 2024; doi: https://doi.org/10.1101/2024.12.04.626878.
