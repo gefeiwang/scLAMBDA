@@ -175,3 +175,76 @@ def adjust_tg(x_hat, x_hat_tg_ls, tg_loc, ctrl_mean_tensor):
         mask = tg_loc[:, j]>=0
         x_hat[torch.arange(x_hat.shape[0]).to(mask.device)[mask], tg_loc[:, j][mask]] = x_hat_tg[mask].reshape(-1) - ctrl_mean_tensor[tg_loc[:, j]][mask]
     return x_hat
+
+
+def compute_corr_split(adata, seed=0):
+    '''
+    compute the replicability of perturbation effects by randomly splitting perturbed cells into two equal subsets,
+    and computing the PCC between the average perturbation effects estimated from each subset.
+    '''
+    np.random.seed(seed)
+    adata_ = adata.copy()
+    ctrl_x = adata_[adata_.obs['condition'].values == 'ctrl'].X
+    ctrl_mean = np.mean(ctrl_x, axis=0)
+    adata_.X = adata_.X - ctrl_mean.reshape(1, -1)
+    pert_ls = []
+    corr_ls = []
+    for i in np.unique(adata_.obs['condition'].values):
+        if i != 'ctrl':
+            adata_i = adata_[adata_.obs['condition'].values == i].copy()
+            if adata_i.shape[0] > 1: # cannot be calculated with less then two cells
+                idx = np.random.choice(adata_i.shape[0], int(adata_i.shape[0]/2), replace=False)
+                delta_i_1 = np.array(np.mean(adata_i.X[idx], axis=0)).reshape(-1)
+                delta_i_2 = np.array(np.mean(adata_i.X[~np.isin(np.arange(adata_i.shape[0]), idx)], axis=0)).reshape(-1)
+                pert_ls.append(i)
+                corr_ls.append(np.corrcoef(delta_i_1, delta_i_2)[0, 1])
+    return pert_ls, corr_ls
+
+
+def compute_reliability_score(adata,
+                              pert_ls_unseen,
+                              pert_embeddings,
+                              pert_delta,
+                              k=5):
+
+    pert_ls_seen = np.setdiff1d(np.unique(adata.obs['condition'].values), (list(pert_ls_unseen) + ['ctrl']))
+    pert_ls, corr_ls = compute_corr_split(adata)
+    pcc_rep_df = pd.DataFrame(index=pert_ls)
+    pcc_rep_df['PCC_rep'] = corr_ls
+    
+    from scipy.spatial.distance import cdist
+    emb_df = pd.DataFrame(index=['dim_'+str(i) for i in range(len(pert_embeddings[list(pert_embeddings.keys())[0]]))])
+    for i in list(pert_embeddings.keys()):
+        if np.linalg.norm(pert_embeddings[i]) > 0:
+            emb_df[i] = pert_embeddings[i]
+    emb_df = emb_df.T
+
+    emb_df_unseen = emb_df.loc[np.intersect1d(pert_ls_unseen, emb_df.index)]
+    emb_df_seen = emb_df.loc[np.intersect1d(pert_ls_seen, emb_df.index)] # available observed perturbations
+
+    D = cdist(emb_df_unseen.values, emb_df_seen.values, 'cosine') # cosine distance
+
+    rs_ls = []
+    rs2_ls = []
+
+    for i in range(emb_df_unseen.shape[0]):
+        distance = D[i]
+        nearest_neighbor_indices = np.argsort(distance)[:k]
+
+        delta_sum = np.zeros(adata.shape[1])
+        rs2 = 0
+        for n, j in enumerate(emb_df_seen.index[nearest_neighbor_indices]):
+            delta_sum = delta_sum + pert_delta[j]
+        for n, j in enumerate(emb_df_seen.index[nearest_neighbor_indices]):
+            rs2 = rs2 + np.corrcoef(pert_delta[j], delta_sum - pert_delta[j])[0, 1]
+        rs2 = rs2 / k
+        rs_ls.append(np.mean((1-distance[nearest_neighbor_indices]) * pcc_rep_df.loc[emb_df_seen.index[nearest_neighbor_indices]].values))
+        rs2_ls.append(rs2)
+
+    rs_df = pd.DataFrame(index=emb_df_unseen.index)
+    rs_df['rs_rep'] = rs_ls
+    rs_df['rs_cons'] = rs2_ls
+    return rs_df.sort_values(by='rs_rep', ascending=False)
+
+
+

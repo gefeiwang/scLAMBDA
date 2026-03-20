@@ -403,7 +403,10 @@ class Model(object):
             self.adata.obsm['tg_loc'] = np.int64(self.tg_loc_cells)
 
         # control cells
-        ctrl_x = adata[adata.obs['condition'].values == 'ctrl'].X
+        if 'ctrl' in np.unique(adata.obs['condition'].values):
+            ctrl_x = adata[adata.obs['condition'].values == 'ctrl'].X
+        else: # if there are no control cells, use the mean of all training data
+            ctrl_x = adata[adata.obs[split_name].values == 'train'].X
         self.ctrl_mean = np.mean(ctrl_x, axis=0)
         self.ctrl_x = torch.from_numpy(ctrl_x - self.ctrl_mean.reshape(1, -1)).float().to(self.device)
         self.adata.X = self.adata.X - self.ctrl_mean.reshape(1, -1)
